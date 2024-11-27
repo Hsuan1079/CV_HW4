@@ -2,7 +2,7 @@ import os
 import numpy as np
 import cv2
 from feature_match import sift, matching_features, Draw_matches
-from fundamentak_matrix import get_fundamental_matrix, draw_epilines
+from fundamental_matrix import get_fundamental_matrix, draw_epilines
 # Measona_calib
 K1=K2=np.asarray([[1421.9, 0.5, 509.2],
                  [0,   1421.9, 380.2],
