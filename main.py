@@ -1,17 +1,14 @@
 import os
 import cv2
-import trimesh
 import numpy as np
 import matplotlib.pyplot as plt
-from scipy.linalg import svd
 from mpl_toolkits.mplot3d import Axes3D
 from feature_match import sift, matching_features, Draw_matches
 from fundamental_matrix import get_fundamental_matrix, draw_epilines
-
 # Measona_calib
-# K1=K2=np.asarray([[1421.9, 0.5, 509.2],
-#                  [0,   1421.9, 380.2],
-#                  [0,        0,     1]])
+K1=K2=np.asarray([[1421.9, 0.5, 509.2],
+                 [0,   1421.9, 380.2],
+                 [0,        0,     1]])
 
 # Starue_calib
 # Camera A:
@@ -27,38 +24,6 @@ K2=np.array([[5426.566895, 0.678017, 387.430023],
 # def ndarray2matlab(x):
 #     return matlab.double(x.tolist())
 
-
-if __name__=='__main__':
-    img1_path = os.path.join('data/Statue1.bmp') 
-    img2_path = os.path.join('data/Statue2.bmp') 
-
-    img1 = cv2.imread(img1_path)
-    img2 = cv2.imread(img2_path)
-
-    # 1.Feature Matching (SIFT)
-    keys1,desc1 = sift(img1)
-    keys2,desc2 = sift(img2)
-    matches = matching_features(desc1, desc2)
-    Draw_matches(matches, img1, img2, keys1, keys2)
-    
-    # 2. get the Fundamental matrix by correspondence
-    pts1 = np.array([(int(keys1[i][0]), int(keys1[i][1])) for i, j in matches])  # 影像1的匹配點
-    pts2 = np.array([(int(keys2[j][0]), int(keys2[j][1])) for i, j in matches])  # 影像2的匹配點
-
-    F, inlier_idxs = get_fundamental_matrix(pts1,pts2,threshold=3)
-    inlier1 = pts1[inlier_idxs]
-    inlier2 = pts2[inlier_idxs]
-
-    img1 = cv2.cvtColor(img1, cv2.COLOR_BGR2GRAY)
-    img2 = cv2.cvtColor(img2, cv2.COLOR_BGR2GRAY)
-
-    # 3. draw epipolar lines
-    print(f'# correspondence: {len(pts1)}')
-    print(f'# inliers: {len(inlier_idxs)}')
-    print("Fundamental Matrix F:\n", F)
-    draw_epilines(img1, img2, inlier1, inlier2, F, 'epilines.png')
-
-#################################################################################### Step 4.
 def compute_essential_matrix(F, K1, K2):
     """
     Compute the Essential Matrix from the Fundamental Matrix.
@@ -110,19 +75,6 @@ def decompose_essential_matrix(E):
 
     return poses
 
-# Compute the Essential Matrix
-E = compute_essential_matrix(F, K1, K2)
-
-# Decompose into possible poses
-poses = decompose_essential_matrix(E)
-
-# Print the results
-for i, (R, t) in enumerate(poses):
-    print(f"Pose {i + 1}:")
-    print(f"Rotation:\n{R}")
-    print(f"Translation:\n{t}\n")
-
-#################################################################################### Step 5., Step 6.
 def triangulate_points(P1, P2, pts1, pts2):
     """
     Triangulate 3D points from two camera matrices and point correspondences.
@@ -186,23 +138,7 @@ def evaluate_poses(K1, K2, poses, pts1, pts2):
 
     return best_pose, best_3d_points
 
-# Evaluate the four poses to find the most appropriate one
-best_pose, best_3d_points = evaluate_poses(K1, K2, poses, pts1, pts2)
-
-# Print the best pose
-R_best, t_best = best_pose
-print("Best Rotation Matrix:")
-print(R_best)
-print("\nBest Translation Vector:")
-print(t_best)
-
-# Visualize the 3D points (optional)
-print("Reconstructed 3D Points:")
-print(best_3d_points[:, :3])  # Drop the homogeneous coordinate for visualization
-
-#################################################################################### Step 7.
-
-def export_to_obj(points_3d, output_file='reconstruction.obj'):
+def export_to_obj(points_3d, output_file):
     """
     Export 3D points to an OBJ file.
     Args:
@@ -214,10 +150,6 @@ def export_to_obj(points_3d, output_file='reconstruction.obj'):
             # Write vertex coordinates (drop homogeneous coordinate if present)
             f.write(f"v {point[0]} {point[1]} {point[2]}\n")
     print(f"Exported 3D points to {output_file}")
-
-export_to_obj(best_3d_points[:, :3], output_file='reconstructed_scene.obj')
-import matplotlib.pyplot as plt
-from mpl_toolkits.mplot3d import Axes3D
 
 def plot_3d_points(points_3d):
     """
@@ -233,20 +165,67 @@ def plot_3d_points(points_3d):
     ax.set_zlabel('Z')
     plt.show()
 
-# Plot the best 3D points
-# plot_3d_points(best_3d_points[:, :3])
+if __name__=='__main__':
+    img1_path=os.path.join('data/Statue1.bmp') 
+    img2_path=os.path.join('data/Statue2.bmp') 
 
-import open3d as o3d
+    img1=cv2.imread(img1_path)
+    img2=cv2.imread(img2_path)
 
-def visualize_3d_points_open3d(points_3d):
-    """
-    Visualize 3D points using Open3D.
-    Args:
-        points_3d: Reconstructed 3D points (Nx3).
-    """
-    point_cloud = o3d.geometry.PointCloud()
-    point_cloud.points = o3d.utility.Vector3dVector(points_3d[:, :3])
-    o3d.visualization.draw_geometries([point_cloud])
+    # 1.Feature Matching (SIFT)
+    keys1,desc1=sift(img1)
+    keys2,desc2=sift(img2)
+    matches=matching_features(desc1,desc2)
+    Draw_matches(matches,img1,img2,keys1,keys2)
+    
+    # 2. get the Fundamental matrix by correspondence
+    pts1 = np.array([(int(keys1[i][0]), int(keys1[i][1])) for i, j in matches])  # 影像1的匹配點
+    pts2 = np.array([(int(keys2[j][0]), int(keys2[j][1])) for i, j in matches])  # 影像2的匹配點
 
-# Visualize with Open3D
-visualize_3d_points_open3d(best_3d_points)
+    F,inlier_idxs = get_fundamental_matrix(pts1,pts2,threshold=3)
+    inlier1 = pts1[inlier_idxs]
+    inlier2 = pts2[inlier_idxs]
+
+    img1=cv2.cvtColor(img1,cv2.COLOR_BGR2GRAY)
+    img2=cv2.cvtColor(img2,cv2.COLOR_BGR2GRAY)
+    # 3. draw epipolar lines
+    print(f'# correspondence: {len(pts1)}')
+    print(f'# inliers: {len(inlier_idxs)}')
+    print("Fundamental Matrix F:\n", F)
+    draw_epilines(img1, img2, inlier1, inlier2, F, 'epilines.png')
+
+    # 4. four possible solutions of essential matrix
+    # Compute the Essential Matrix
+    E = compute_essential_matrix(F, K1, K2)
+
+    # Decompose into possible poses
+    poses = decompose_essential_matrix(E)
+
+    # Print the results
+    for i, (R, t) in enumerate(poses):
+        print(f"Pose {i + 1}:")
+        print(f"Rotation:\n{R}")
+        print(f"Translation:\n{t}\n")
+
+    # 5. find out the most appropriate solution of essential matrix
+    # 6. get the 3D points
+    # Evaluate the four poses to find the most appropriate one
+    best_pose, best_3d_points = evaluate_poses(K1, K2, poses, pts1, pts2)
+
+    # Print the best pose
+    R_best, t_best = best_pose
+    print("Best Rotation Matrix:")
+    print(R_best)
+    print("\nBest Translation Vector:")
+    print(t_best)
+
+    # Visualize the 3D points (optional)
+    print("Reconstructed 3D Points:")
+    print(best_3d_points[:, :3])  # Drop the homogeneous coordinate for visualization
+
+    # 7. get 3D model
+
+    export_to_obj(best_3d_points[:, :3], output_file='output/reconstructed_scene.obj')
+
+    # Plot the best 3D points
+    plot_3d_points(best_3d_points[:, :3])
