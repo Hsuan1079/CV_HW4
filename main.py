@@ -36,6 +36,7 @@ def compute_essential_matrix(F, K1, K2):
     E = K2.T @ F @ K1
     # Enforce rank-2 constraint
     U, S, Vt = np.linalg.svd(E)
+    S[0] = S[1] = (S[0] + S[1]) / 2
     S[2] = 0
     E = U @ np.diag(S) @ Vt
     return E
